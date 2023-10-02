@@ -1,0 +1,69 @@
+---
+title: "Introduction to EDA"
+format: html
+editor: visual
+author: "Anjani Sowmya Bollapragada - 23851219"
+---
+# Exploratory Data Analysis in R
+
+## What is Exploratory Data Analysis?
+
+Exploratory data analysis is a statistical, approach towards analyzing data sets to investigate and summarize their main characteristics, often through statistical graphics and other data visualization methods.
+
+## Diagnostics
+When importing data sets, it is important to consider characteristics about the data columns, rows, and individual cells.
+
+### Variables
+Name of each variable.
+
+### Types
+
+#### Numerical: Continuous
+Measurable numbers that are fractional or decimal and cannot be counted (e.g., time, height, weight).
+
+#### Numerical: Discrete
+Countable whole numbers or integers (e.g., number of successes or failures).
+
+#### Categorical: Nominal
+Labeling variables without any order or quantitative value (e.g., hair color, nationality).
+
+#### Categorical: Ordinal
+Where there is a hierarchical order along a scale (e.g., ranks, letter grades, age groups).
+
+### Missing Values
+Cells, rows, or columns without data
+
+Missing percent: percentage of missing values * Unique count: number of unique values.
+
+Unique rate: rate of unique value - unique count / total number of observations.
+
+## Summary Statistics
+Summary statistics allow you to summarize large amounts of information about your data as quickly as possible.
+
+### Central Tendency
+Measuring a central property of your data. Some examples you’ve probably heard of are:
+
+Mean: Average value
+
+Median: Middle value
+
+Mode: Most common value
+
+### Statistical Dispersion
+Measure of data variability, scatter, or spread. Some examples you may have heard of:
+
+Standard deviation (SD): The amount of variation that occurs in a set of values.
+
+Interquartile range (IQR): The difference between the 75th and 25th percentiles
+
+Outliers: A value outside of 1.5*IQR
+
+### Distribution Shape
+Measures of describing the shape of a distribution, usually compared to a normal distribution (bell-curve)
+
+Skewness: The symmetry of the distribution
+
+Kurtosis: The tailedness of the distribution
+
+### Statistical Dependence (Correlation)
+Measure of causality between two random variables (statistically). Notably, we approximate causality with correlations.
