@@ -1,0 +1,174 @@
+---
+title: "Correlating Like a Data Master"
+author: "Anjani Sowmya Bollapragada - 23851219"
+format: html
+editor: visual
+---
+
+### Purpose of this chapter
+
+Assess relationships within a novel data set using publication quality tables and plots
+
+### Required SetUp
+
+```{r}
+if (!require(pacman))
+  install.packages("pacman")
+
+pacman::p_load(colorblindr,
+       dlookr,
+       formattable,
+       GGally,
+       ggdist,
+       ggpubr,
+       ggridges,
+       here,
+       tidyverse)
+
+# Set global ggplot() theme
+# Theme pub_clean() from the ggpubr package with base text size = 16
+theme_set(theme_pubclean(base_size = 12)) 
+# All axes titles to their respective far right sides
+theme_update(axis.title = element_text(hjust = 1))
+# Remove axes ticks
+theme_update(axis.ticks = element_blank()) 
+# Remove legend key
+theme_update(legend.key = element_blank())
+```
+
+### Load an Examine a Data Set
+
+```{r}
+# Let's load the canopy tree data set
+dataset <- read.csv("week19_airline_safety.csv")
+
+# What does the data look like?
+dataset |>
+  head() |>
+  formattable()
+```
+
+### Describe and Visualize Correlations
+
+Correlations are a statistical relationship between two numerical variables, may or may not be causal. Exploring correlations in your data allows you determine data independence, a major assumption of parametric statistics, which means your variables are both randomly collected.
+
+```{r}
+# Table of correlations between numerical variables (we are sticking to the default Pearson's r coefficient)
+correlate(dataset) |>
+  formattable()
+```
+
+```{r}
+# Correlation matrix of numerical variables
+dataset |>
+plot_correlate()
+```
+
+### Visualize Correlations within Groups
+
+```{r}
+dataset |>
+  group_by(airline) |>
+  plot_correlate()
+```
+
+### Describe and Visualize Relationships Based on Target Variables
+
+#### Target Variables
+
+*Target variables* are essentially numerical or categorical variables that you want to relate others to in a data frame. *dlookr* does this through the *target_by()* function, which is similar to *group_by()* in dplyr. The *relate()* function then briefly analyzes the relationship between the target variable and the variables of interest.
+
+#### Numerical Target Variables: Numerical Variable of Interest
+
+```{r}
+# First, we need to remove NAs, they cause an error
+dataset.noNA <- dataset |> 
+  drop_na()
+
+# The numerical predictor variable that we want
+num <- target_by(dataset.noNA, n_events)
+
+# Relating the variable of interest to the numerical target variable
+num_num <- relate(num, avail_seat_km_per_week)
+
+# Summary of the regression analysis - the same as the summary from lm(Formula)
+summary(num_num)
+```
+
+```{r}
+# Plotting the linear relationship
+plot(num_num)
+```
+
+#### Numerical Target Variables: Categorical Variable of Interest
+
+```{r}
+# The categorical predictor variable that we want
+num <- target_by(dataset, n_events) 
+
+# We need to change Group to a factor
+num$airline <- as.factor(num$airline)
+
+# Relating the variable of interest to the numerical target variable
+num_cat <- relate(num, airline)
+
+# Summary of the ANOVA analysis - the same as the summary from anova(lm(Formula))
+summary(num_cat)
+```
+
+```{r}
+plot(num_cat) + 
+  theme(axis.text.x = element_blank())
+```
+
+
+#### Categorical Target Variables: Numerical Variable of Interest
+
+```{r}
+# The categorical predictor variable that we want
+categ <- target_by(dataset, airline)
+
+# Relating the variable of interest to the numerical target variable
+cat_num <- relate(categ, n_events)
+
+# Summary of descriptive statistics
+summary(cat_num)
+```
+
+```{r}
+plot(cat_num) 
+```
+
+#### Categorical Target Variables: Categorical Variable of Interest
+
+```{r}
+# Create new categorical column
+cat_dataset <- dataset |>
+  select(n_events, airline) |>
+  drop_na() |>
+  mutate(High_events = ifelse(
+    n_events > (mean(n_events + sd(n_events))), 
+                          "Yes", 
+                          "No"))
+
+# New dataset 
+cat_dataset |>
+  head() |>
+  formattable()
+```
+
+```{r}
+# The categorical predictor variable that we want
+categ <- target_by(cat_dataset, High_events)
+
+# Relating the variable of interest to the categorical target variable
+cat_cat <- relate(categ, airline)
+
+# Summary of the Chi-square test for Independence
+summary(cat_cat)
+```
+
+```{r}
+plot(cat_cat)
+```
+

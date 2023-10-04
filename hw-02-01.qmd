@@ -1,0 +1,170 @@
+---
+title: "Transforming lik a Data Transformer"
+author: "Anjani Sowmya Bollapragada - 23851219"
+format: html
+editor: visual
+---
+
+### Purpose
+To use data transformation to correct non-normality in numerical data.
+
+### Required SetUp
+
+```{r}
+# Sets the number of significant figures to two - e.g., 0.01
+options(digits = 2)
+
+# Required package for quick package downloading and loading 
+if (!require(pacman))  
+  install.packages("pacman")
+
+# Downloads and load required packages
+pacman::p_load(dlookr, # Exploratory data analysis
+               forecast, # Needed for Box-Cox transformations
+               formattable, # HTML tables from R outputs
+               here, # Standardizes paths to data
+               kableExtra, # Alternative to formattable
+               knitr, # Needed to write HTML reports
+               missRanger, # To generate NAs
+               tidyverse) # Powerful data wrangling package suite
+```
+
+### Load and Examine Dataset
+
+```{r}
+# Let's load a data set from the diabetes data set
+library(dplyr)
+dataset <- read.csv("week19_airline_safety.csv") |>
+  # Add a categorical group
+  mutate(no_events = ifelse(n_events >= 0 & n_events <= 50, "Less Number of Events", 
+                            ifelse(n_events > 50 & n_events <= 100, "Medium number of Events", 
+                                   "Large number of Events")),
+         no_events = fct_rev(no_events))
+
+# What does the data look like?
+dataset |>
+  head() |>
+  formattable()
+```
+
+### Data Normality
+
+Normal distributions (bell curves) are a common data assumptions for many hypothesis testing statistics, in particular parametric statistics. Deviations from normality can either strongly skew the results or reduce the power to detect a significant statistical difference.
+
+```{r}
+dataset |>
+  select(avail_seat_km_per_week, n_events) |>
+  describe() |>
+  select(described_variables, skewness) |>
+  formattable()
+```
+
+### Q-Q Plots
+
+Plots of the quartiles of a target data set against the predicted quartiles from a normal distribution.
+
+```{r}
+dataset |>
+plot_normality(avail_seat_km_per_week, n_events)
+```
+
+### Normality within Groups
+
+```{r}
+dataset %>%
+  group_by(type_of_event) %>%
+  select(n_events) %>%
+  plot_normality()
+```
+
+### Transforming Data
+
+```{r}
+InsMod <- dataset |>
+  filter(n_events > 100)
+InsMod
+```
+
+### Square-root, Cube-root, and Logarithmic Transformations
+
+#### Square-root Transformation
+
+```{r}
+sqrtIns <- transform(InsMod$n_events, method = "sqrt") 
+
+summary(sqrtIns)
+```
+```{r}
+sqrtIns |>
+  plot()
+```
+#### Logarithmic (+1) Transformation
+
+```{r}
+Log1Ins <- transform(InsMod$n_events, method = "log+1") 
+
+summary(Log1Ins)
+```
+
+```{r}
+Log1Ins |>
+  plot()
+```
+
+#### Inverse Transformation
+
+```{r}
+InvIns <- transform(InsMod$n_events, method = "1/x") 
+
+summary(InvIns)
+```
+
+```{r}
+InvIns |>
+  plot()
+```
+
+#### Squared Transformation
+
+```{r}
+SqrdIns <- transform(InsMod$n_events, method = "x^2") 
+
+summary(SqrdIns)
+```
+
+```{r}
+SqrdIns |>
+  plot()
+```
+
+#### Cubed Transformation
+
+```{r}
+CubeIns <- transform(InsMod$n_events, method = "x^3") 
+
+summary(CubeIns)
+```
+
+```{r}
+CubeIns |>
+  plot()
+```
+
+### Box-cox Transformation
+
+```{r}
+BoxCoxIns <- transform(InsMod$n_events, method = "Box-Cox") 
+
+summary(BoxCoxIns)
+```
+
+```{r}
+BoxCoxIns |>
+  plot()
+```
+### Produce an HTML Transformation Summary
+
+```{r}
+transformation_web_report(dataset)
+```
+

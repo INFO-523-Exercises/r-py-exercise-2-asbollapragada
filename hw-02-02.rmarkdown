@@ -1,0 +1,336 @@
+---
+title: "Imputing like a Data Scientist"
+author: "Anjani Sowmya Bollapragada - 23851219"
+format: html
+editor: visual
+---
+
+
+### Purpose
+
+Exploring, visualizing, and imputing outliers and missing values (NAs) in a novel data set and produce publication quality graphs and tables.
+
+### Required SetUp
+
+
+```{r}
+if(!require(colorblindr))
+  remotes::install_github("wilkelab/cowplot")
+  # install.packages("colorspace", repos = "http://R-Forge.R-project.org")
+  remotes::install_github("clauswilke/colorblindr")
+```
+
+```{r}
+# Sets the number of significant figures to two - e.g., 0.01
+options(digits = 2)
+
+# Required package for quick package downloading and loading 
+if (!require(pacman))
+  install.packages("pacman")
+
+pacman::p_load(BiocManager, # Colorblind friendly pallettes
+               cluster, # K cluster analyses
+               dlookr, # Exploratory data analysis
+               formattable, # HTML tables from R outputs
+               ggfortify, # Plotting tools for stats
+               ggpubr, # Publishable ggplots
+               here, # Standardizes paths to data
+               kableExtra, # Alternative to formattable
+               knitr, # Needed to write HTML reports
+               missRanger, # To generate NAs
+               plotly, # Visualization package
+               rattle, # Decision tree visualization
+               rpart, # rpart algorithm
+               tidyverse, # Powerful data wrangling package suite
+               visdat,
+               colorblindr,
+               mice) # Another EDA visualization package
+
+# Set global ggplot() theme
+# Theme pub_clean() from the ggpubr package with base text size = 16
+theme_set(theme_pubclean(base_size = 16)) 
+# All axes titles to their respective far right sides
+theme_update(axis.title = element_text(hjust = 1))
+# Remove axes ticks
+theme_update(axis.ticks = element_blank()) 
+# Remove legend key
+theme_update(legend.key = element_blank())
+```
+
+### Load and Examine Dataset
+
+
+```{r}
+dataset <- read.csv("week19_airline_safety.csv") |>
+  # Add a categorical group
+  mutate(no_events = ifelse(n_events >= 0 & n_events <= 50, "Less Number of Events", 
+                            ifelse(n_events > 50 & n_events <= 100, "Medium number of Events", 
+                                   "Large number of Events")),
+         no_events = fct_rev(no_events))
+
+# What does the data look like?
+dataset |>
+  head() |>
+  formattable()
+```
+
+
+### Diagnose Outliers
+
+
+```{r}
+# Table showing outliers
+dataset |>
+  diagnose_outlier() |>
+  filter(outliers_ratio > 0) |>  
+  mutate(rate = outliers_mean / with_mean) |>
+  arrange(desc(rate)) |> 
+  select(-outliers_cnt) |>
+  formattable() |>
+  plot_outlier()
+```
+
+
+### Basic Exploration of Missing Values (NAs)
+
+
+```{r}
+# Randomly generate NAs for 30
+na.dataset <- dataset |>
+  generateNA(p = 0.3)
+
+# First six rows
+na.dataset |>
+head() |>
+  formattable()
+```
+
+```{r}
+# Create the NA table
+na.dataset |>
+  plot_na_pareto(only_na = TRUE, plot = FALSE) |>
+  formattable() # Publishable table
+```
+
+
+Plots showing the frequency of missing values
+
+
+```{r}
+# Plot the insersect of the columns with missing values
+# This plot visualizes the table above
+na.dataset |>
+  plot_na_pareto(only_na = TRUE)
+```
+
+
+### Advanced Exploration of Missing Values (NAs)
+
+
+```{r}
+# Plot the intersect of the 5 columns with the most missing values
+# This means that some combinations of columns have missing values in the same row
+na.dataset |>
+  select(X, airline,	avail_seat_km_per_week,	year_range, type_of_event,	n_events) |>
+  plot_na_intersect(only_na = TRUE) 
+```
+
+
+#### Determining if NA Observations are the Same
+
+1. Missing values can be the same observation across several columns, this is not shown above
+2. The visdat package can solve this with the vis_miss() function which shows the rows with missing values through ggplotly()
+
+
+```{r}
+# Interactive plotly() plot of all NA values to examine every row
+na.dataset |>
+ select(X, airline,	avail_seat_km_per_week,	year_range, type_of_event,	n_events) |>
+ vis_miss() |>
+ ggplotly() 
+```
+
+
+### Impute Outliers and NAs
+
+#### Classifying Outliers
+
+
+```{r}
+# Define the OkabeIto color palette
+okabe_ito_palette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+
+# Your ggplot code with the custom color palette
+dataset %>%
+  ggplot(aes(x = airline, y = n_events, fill = n_events)) +
+  geom_boxplot(width = 0.5, outlier.size = 2, outlier.alpha = 0.5) +
+  xlab("Airline") +
+  ylab("Number of Events") +
+  scale_fill_manual(values = okabe_ito_palette) +  # Use the custom palette
+  theme(legend.position = "none")
+
+```
+
+
+#### Mean Imputation
+
+The mean of the observed values for each variable is computed and the outliers for that variable are imputed by this mean.
+
+
+```{r}
+# Raw summary, output suppressed
+mean_out_imp_events <- dataset |>
+  select(n_events) |>
+  filter(n_events < 200) |>
+  imputate_outlier(n_events, method = "mean")
+
+# Output showing the summary statistics of our imputation
+mean_out_imp_events |>
+  summary() 
+```
+
+```{r}
+# Visualization of the mean imputation
+mean_out_imp_events |>
+  plot()
+```
+
+
+#### Median Imputation
+
+The median of the observed values for each variable is computed and the outliers for that variable are imputed by this median.
+
+
+```{r}
+# Raw summary, output suppressed
+med_out_imp_events <- dataset |>
+  select(n_events) |>
+  filter(n_events < 200) |>
+  imputate_outlier(n_events, method = "median")
+
+# Output showing the summary statistics of our imputation
+med_out_imp_events |>
+  summary()
+```
+
+```{r}
+# Visualization of the median imputation
+med_out_imp_events |>
+  plot()
+```
+
+
+#### Mode Imputation
+
+The mode of the observed values for each variable is computed and the outliers for that variable are imputed by this mode.
+
+
+```{r}
+# Raw summary, output suppressed
+mode_out_imp_events <- dataset |>
+  select(n_events) |>
+  filter(n_events < 200) |>
+  imputate_outlier(n_events, method = "mode")
+
+# Output showing the summary statistics of our imputation
+mode_out_imp_events |>
+  summary()
+```
+
+```{r}
+# Visualization of the mode imputation
+mode_out_imp_events |>
+plot()
+```
+
+
+#### Capping Imputation (aka Winsorizing)
+
+The Percentile Capping is a method of Imputing the outlier values by replacing those observations outside the lower limit with the value of 5th percentile and those that lie above the upper limit, with the value of 95th percentile of the same dataset.
+
+
+```{r}
+# Raw summary, output suppressed
+cap_out_imp_events <- dataset |>
+  select(n_events) |>
+  filter(n_events < 200) |>
+  imputate_outlier(n_events, method = "capping")
+
+# Output showing the summary statistics of our imputation
+cap_out_imp_events |>
+  summary()
+```
+
+```{r}
+# Visualization of the capping imputation
+cap_out_imp_events |>
+  plot()
+```
+
+
+### Imputing NAs
+
+knn: K-nearest neighbors (KNN)
+rpart: Recursive Partitioning and Regression Trees (rpart)
+mice: Multivariate Imputation by Chained Equations (MICE)
+
+
+#### K-Nearest Neighbor (KNN) Imputation
+KNN is a machine learning algorithm that classifies data by similarity. This in effect clusters data into similar groups. The algorithm predicts values of new data to replace NA values based on how closely they resembles training data points, such as by comparing across other columns.
+
+
+```{r}
+# KNN plot of our dataset without categories
+autoplot(clara(dataset, 3)) +
+  scale_color_OkabeIto()
+```
+
+
+
+#### Recursive Partitioning and Regression Trees (rpart)
+
+*rpart* is a decision tree machine learning algorithm that builds classification or regression models through a two stage process, which can be thought of as binary trees. The algorithm splits the data into subsets, which move down other branches of the tree until a termination criteria is reached.
+
+
+```{r}
+# Raw summary, output suppressed
+rpart_na_imp_events <- na.dataset |>
+  imputate_na(n_events, method = "rpart")
+
+# Plot showing the results of our imputation
+rpart_na_imp_events |>
+  plot()
+```
+
+
+Note: My dataset didn't have any NA values, hence rpart cannot be executed well.
+
+#### Multivariate Imputation by Chained Equations (MICE)
+
+
+```{r}
+install.packages("mice")
+library(mice)
+```
+
+```{r}
+# Raw summary, output suppressed
+mice_na_imp_events <- na.dataset |>
+  imputate_na(n_events, method = "mice", seed = 123)
+```
+
+```{r}
+# Plot showing the results of our imputation
+mice_na_imp_events |>
+  plot()
+```
+
+
+
+### Produce an HTML Transformation Summary
+
+
+```{r}
+transformation_web_report(dataset)
+```
+
